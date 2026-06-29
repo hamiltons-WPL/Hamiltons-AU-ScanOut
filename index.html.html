@@ -5,148 +5,157 @@
 <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1">
 <title>Hamiltons Clearance Scan-Out</title>
 <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@tabler/icons-webfont@3.19.0/dist/tabler-icons.min.css">
+<script src="https://cdn.jsdelivr.net/npm/quagga@0.12.1/dist/quagga.min.js"></script>
 <style>
   *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
-
   :root {
-    --navy:    #1A2B4A;
-    --blue:    #2D5986;
-    --blue-lt: #D6E4F0;
-    --green:   #16a34a;
-    --green-lt:#dcfce7;
-    --amber:   #d97706;
-    --amber-lt:#fef3c7;
-    --red:     #dc2626;
-    --red-lt:  #fee2e2;
-    --gray-50: #f9fafb;
-    --gray-100:#f3f4f6;
-    --gray-200:#e5e7eb;
-    --gray-400:#9ca3af;
-    --gray-600:#4b5563;
-    --gray-800:#1f2937;
-    --radius:  8px;
-    --shadow:  0 1px 3px rgba(0,0,0,0.08);
+    --navy:#1A2B4A; --blue:#2D5986; --blue-lt:#D6E4F0;
+    --green:#16a34a; --green-lt:#dcfce7;
+    --amber:#d97706; --amber-lt:#fef3c7;
+    --red:#dc2626; --red-lt:#fee2e2;
+    --gray-50:#f9fafb; --gray-100:#f3f4f6; --gray-200:#e5e7eb;
+    --gray-400:#9ca3af; --gray-600:#4b5563; --gray-800:#1f2937;
+    --radius:8px;
   }
+  body { font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif; background:var(--gray-50); color:var(--gray-800); min-height:100vh; }
 
-  body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif; background: var(--gray-50); color: var(--gray-800); min-height: 100vh; }
+  .header { background:var(--navy); color:#fff; padding:14px 16px; display:flex; align-items:center; justify-content:space-between; position:sticky; top:0; z-index:10; }
+  .header-title { font-size:15px; font-weight:600; }
+  .header-sub { font-size:11px; opacity:0.65; margin-top:1px; }
+  .header-event { font-size:11px; background:rgba(255,255,255,0.15); padding:4px 10px; border-radius:20px; max-width:140px; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
 
-  .header { background: var(--navy); color: #fff; padding: 14px 16px; display: flex; align-items: center; justify-content: space-between; position: sticky; top: 0; z-index: 10; }
-  .header-title { font-size: 15px; font-weight: 600; }
-  .header-sub { font-size: 11px; opacity: 0.65; margin-top: 1px; }
-  .header-event { font-size: 11px; background: rgba(255,255,255,0.15); padding: 4px 10px; border-radius: 20px; }
+  .tabs { display:flex; background:#fff; border-bottom:1px solid var(--gray-200); position:sticky; top:57px; z-index:9; }
+  .tab { flex:1; padding:12px 4px 10px; border:none; background:transparent; font-size:12px; color:var(--gray-400); cursor:pointer; display:flex; flex-direction:column; align-items:center; gap:3px; border-bottom:2px solid transparent; transition:all 0.15s; }
+  .tab i { font-size:20px; }
+  .tab.active { color:var(--blue); border-bottom-color:var(--blue); }
 
-  .tabs { display: flex; background: #fff; border-bottom: 1px solid var(--gray-200); position: sticky; top: 57px; z-index: 9; }
-  .tab { flex: 1; padding: 12px 4px 10px; border: none; background: transparent; font-size: 12px; color: var(--gray-400); cursor: pointer; display: flex; flex-direction: column; align-items: center; gap: 3px; border-bottom: 2px solid transparent; transition: all 0.15s; }
-  .tab i { font-size: 20px; }
-  .tab.active { color: var(--blue); border-bottom-color: var(--blue); }
+  .page { display:none; padding:16px; max-width:540px; margin:0 auto; }
+  .page.active { display:block; }
 
-  .page { display: none; padding: 16px; max-width: 540px; margin: 0 auto; }
-  .page.active { display: block; }
+  .card { background:#fff; border:1px solid var(--gray-200); border-radius:12px; margin-bottom:12px; overflow:hidden; }
+  .card-pad { padding:16px; }
+  .section-label { font-size:11px; font-weight:600; color:var(--gray-400); text-transform:uppercase; letter-spacing:0.05em; margin-bottom:10px; }
 
-  .card { background: #fff; border: 1px solid var(--gray-200); border-radius: 12px; margin-bottom: 12px; overflow: hidden; }
-  .card-pad { padding: 16px; }
-  .section-label { font-size: 11px; font-weight: 600; color: var(--gray-400); text-transform: uppercase; letter-spacing: 0.05em; margin-bottom: 10px; }
+  /* ── Scanner ── */
+  .scan-mode-toggle { display:flex; gap:8px; margin-bottom:14px; }
+  .mode-btn { flex:1; height:40px; border-radius:var(--radius); border:1px solid var(--gray-200); background:#fff; color:var(--gray-600); font-size:13px; font-weight:500; cursor:pointer; display:flex; align-items:center; justify-content:center; gap:6px; transition:all 0.15s; }
+  .mode-btn.active { background:var(--blue); border-color:var(--blue); color:#fff; }
 
-  .scan-center { text-align: center; padding: 24px 16px; }
-  .scan-icon-wrap { width: 64px; height: 64px; background: var(--blue-lt); border-radius: 50%; display: flex; align-items: center; justify-content: center; margin: 0 auto 14px; }
-  .scan-icon-wrap i { font-size: 28px; color: var(--blue); }
-  .scan-title { font-size: 16px; font-weight: 600; margin-bottom: 6px; }
-  .scan-sub { font-size: 13px; color: var(--gray-600); margin-bottom: 16px; }
+  #camera-wrap { position:relative; width:100%; border-radius:10px; overflow:hidden; background:#000; display:none; }
+  #camera-wrap.active { display:block; }
+  #interactive { width:100%; }
+  #interactive video { width:100%; display:block; }
+  #interactive canvas { display:none; }
 
-  .input-row { display: flex; gap: 8px; }
-  input[type=text], input[type=number], input[type=password] {
-    flex: 1; height: 42px; border: 1px solid var(--gray-200); border-radius: var(--radius);
-    padding: 0 12px; font-size: 14px; color: var(--gray-800); background: #fff;
-    -webkit-appearance: none;
+  .scan-overlay { position:absolute; inset:0; display:flex; flex-direction:column; align-items:center; justify-content:center; pointer-events:none; }
+  .scan-frame { width:72%; max-width:260px; aspect-ratio:3/1.2; border:2px solid rgba(255,255,255,0.8); border-radius:8px; position:relative; }
+  .scan-frame::before, .scan-frame::after,
+  .scan-frame span::before, .scan-frame span::after {
+    content:''; position:absolute; width:20px; height:20px; border-color:#fff; border-style:solid;
   }
-  input:focus { outline: none; border-color: var(--blue); box-shadow: 0 0 0 3px rgba(45,89,134,0.12); }
+  .scan-frame::before { top:-2px; left:-2px; border-width:3px 0 0 3px; border-radius:4px 0 0 0; }
+  .scan-frame::after  { top:-2px; right:-2px; border-width:3px 3px 0 0; border-radius:0 4px 0 0; }
+  .scan-frame span::before { bottom:-2px; left:-2px; border-width:0 0 3px 3px; border-radius:0 0 0 4px; }
+  .scan-frame span::after  { bottom:-2px; right:-2px; border-width:0 3px 3px 0; border-radius:0 0 4px 0; }
+  .scan-laser { position:absolute; left:4px; right:4px; height:2px; background:rgba(255,80,80,0.85); top:50%; transform:translateY(-50%); border-radius:2px; animation:laser 1.8s ease-in-out infinite; }
+  @keyframes laser { 0%,100%{top:15%} 50%{top:85%} }
+  .scan-hint { color:rgba(255,255,255,0.85); font-size:12px; margin-top:14px; text-align:center; }
 
-  .btn { height: 42px; padding: 0 18px; border-radius: var(--radius); border: 1px solid var(--gray-200); background: #fff; color: var(--gray-800); font-size: 14px; font-weight: 500; cursor: pointer; display: inline-flex; align-items: center; gap: 6px; white-space: nowrap; transition: all 0.15s; }
-  .btn:hover { background: var(--gray-50); }
-  .btn:active { transform: scale(0.97); }
-  .btn-primary { background: var(--blue); border-color: var(--blue); color: #fff; }
-  .btn-primary:hover { background: var(--navy); border-color: var(--navy); }
-  .btn-success { background: var(--green); border-color: var(--green); color: #fff; }
-  .btn-success:hover { background: #15803d; }
-  .btn-full { width: 100%; justify-content: center; }
-  .btn:disabled { opacity: 0.4; cursor: not-allowed; }
+  .scan-center { text-align:center; padding:24px 16px; }
+  .scan-icon-wrap { width:64px; height:64px; background:var(--blue-lt); border-radius:50%; display:flex; align-items:center; justify-content:center; margin:0 auto 14px; }
+  .scan-icon-wrap i { font-size:28px; color:var(--blue); }
+  .scan-title { font-size:16px; font-weight:600; margin-bottom:6px; }
+  .scan-sub { font-size:13px; color:var(--gray-600); margin-bottom:16px; }
 
-  .result-header { padding: 14px 16px; display: flex; gap: 12px; align-items: flex-start; }
-  .result-img { width: 68px; height: 68px; border-radius: 8px; background: var(--gray-100); flex-shrink: 0; object-fit: cover; display: flex; align-items: center; justify-content: center; }
-  .result-img i { font-size: 26px; color: var(--gray-400); }
-  .result-img img { width: 68px; height: 68px; border-radius: 8px; object-fit: cover; }
-  .result-name { font-size: 15px; font-weight: 600; margin-bottom: 5px; line-height: 1.3; }
-  .result-meta { display: flex; flex-wrap: wrap; gap: 5px; }
-  .badge { display: inline-flex; align-items: center; gap: 3px; padding: 2px 8px; border-radius: 20px; font-size: 11px; font-weight: 500; }
-  .badge-blue { background: var(--blue-lt); color: var(--blue); }
-  .badge-green { background: var(--green-lt); color: var(--green); }
-  .badge-amber { background: var(--amber-lt); color: var(--amber); }
-  .badge-gray { background: var(--gray-100); color: var(--gray-600); border: 1px solid var(--gray-200); }
-  .badge-red { background: var(--red-lt); color: var(--red); }
+  .input-row { display:flex; gap:8px; }
+  input[type=text],input[type=number],input[type=password] { flex:1; height:42px; border:1px solid var(--gray-200); border-radius:var(--radius); padding:0 12px; font-size:14px; color:var(--gray-800); background:#fff; -webkit-appearance:none; }
+  input:focus { outline:none; border-color:var(--blue); box-shadow:0 0 0 3px rgba(45,89,134,0.12); }
 
-  .price-bar { padding: 12px 16px; background: var(--gray-50); border-top: 1px solid var(--gray-200); display: flex; justify-content: space-between; align-items: center; }
-  .price-label { font-size: 12px; color: var(--gray-600); }
-  .price-val { font-size: 22px; font-weight: 700; color: var(--gray-800); }
-  .action-bar { padding: 12px 16px; border-top: 1px solid var(--gray-200); display: flex; gap: 8px; }
-  .action-bar .btn { flex: 1; justify-content: center; }
+  .btn { height:42px; padding:0 18px; border-radius:var(--radius); border:1px solid var(--gray-200); background:#fff; color:var(--gray-800); font-size:14px; font-weight:500; cursor:pointer; display:inline-flex; align-items:center; gap:6px; white-space:nowrap; transition:all 0.15s; }
+  .btn:hover { background:var(--gray-50); }
+  .btn:active { transform:scale(0.97); }
+  .btn-primary { background:var(--blue); border-color:var(--blue); color:#fff; }
+  .btn-primary:hover { background:var(--navy); }
+  .btn-success { background:var(--green); border-color:var(--green); color:#fff; }
+  .btn-full { width:100%; justify-content:center; }
+  .btn:disabled { opacity:0.4; cursor:not-allowed; }
 
-  .alert { padding: 10px 14px; border-radius: var(--radius); font-size: 13px; margin-top: 10px; display: flex; align-items: center; gap: 8px; }
-  .alert-error { background: var(--red-lt); color: var(--red); border: 1px solid #fca5a5; }
-  .alert-success { background: var(--green-lt); color: var(--green); border: 1px solid #86efac; }
+  .result-header { padding:14px 16px; display:flex; gap:12px; align-items:flex-start; }
+  .result-img { width:68px; height:68px; border-radius:8px; background:var(--gray-100); flex-shrink:0; display:flex; align-items:center; justify-content:center; overflow:hidden; }
+  .result-img i { font-size:26px; color:var(--gray-400); }
+  .result-img img { width:68px; height:68px; object-fit:cover; }
+  .result-name { font-size:15px; font-weight:600; margin-bottom:5px; line-height:1.3; }
+  .result-meta { display:flex; flex-wrap:wrap; gap:5px; }
+  .badge { display:inline-flex; align-items:center; gap:3px; padding:2px 8px; border-radius:20px; font-size:11px; font-weight:500; }
+  .badge-blue { background:var(--blue-lt); color:var(--blue); }
+  .badge-green { background:var(--green-lt); color:var(--green); }
+  .badge-amber { background:var(--amber-lt); color:var(--amber); }
+  .badge-gray { background:var(--gray-100); color:var(--gray-600); border:1px solid var(--gray-200); }
+  .badge-red { background:var(--red-lt); color:var(--red); }
 
-  .stat-grid { display: grid; grid-template-columns: repeat(3,1fr); gap: 8px; margin-bottom: 12px; }
-  .stat { background: #fff; border: 1px solid var(--gray-200); border-radius: 10px; padding: 12px; text-align: center; }
-  .stat-num { font-size: 24px; font-weight: 700; line-height: 1; }
-  .stat-lbl { font-size: 11px; color: var(--gray-400); margin-top: 3px; }
-  .stat-num.green { color: var(--green); }
-  .stat-num.blue { color: var(--blue); }
+  .price-bar { padding:12px 16px; background:var(--gray-50); border-top:1px solid var(--gray-200); display:flex; justify-content:space-between; align-items:center; }
+  .price-label { font-size:12px; color:var(--gray-600); }
+  .price-val { font-size:22px; font-weight:700; }
+  .action-bar { padding:12px 16px; border-top:1px solid var(--gray-200); display:flex; gap:8px; }
+  .action-bar .btn { flex:1; justify-content:center; }
 
-  .log-item { display: flex; align-items: center; gap: 10px; padding: 10px 16px; border-bottom: 1px solid var(--gray-100); }
-  .log-item:last-child { border-bottom: none; }
-  .log-dot { width: 8px; height: 8px; border-radius: 50%; background: var(--green); flex-shrink: 0; }
-  .log-dot.legacy { background: var(--amber); }
-  .log-info { flex: 1; min-width: 0; }
-  .log-name { font-size: 13px; font-weight: 500; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
-  .log-meta { font-size: 11px; color: var(--gray-400); margin-top: 1px; }
-  .log-price { font-size: 13px; font-weight: 600; color: var(--green); flex-shrink: 0; }
+  .alert { padding:10px 14px; border-radius:var(--radius); font-size:13px; margin-top:10px; display:flex; align-items:center; gap:8px; }
+  .alert-error { background:var(--red-lt); color:var(--red); border:1px solid #fca5a5; }
+  .alert-success { background:var(--green-lt); color:var(--green); border:1px solid #86efac; }
 
-  .empty-state { text-align: center; padding: 32px 16px; color: var(--gray-400); }
-  .empty-state i { font-size: 36px; display: block; margin-bottom: 10px; }
-  .empty-state p { font-size: 14px; }
+  .stat-grid { display:grid; grid-template-columns:repeat(3,1fr); gap:8px; margin-bottom:12px; }
+  .stat { background:#fff; border:1px solid var(--gray-200); border-radius:10px; padding:12px; text-align:center; }
+  .stat-num { font-size:24px; font-weight:700; line-height:1; }
+  .stat-num.green { color:var(--green); }
+  .stat-num.blue { color:var(--blue); }
+  .stat-lbl { font-size:11px; color:var(--gray-400); margin-top:3px; }
 
-  .rec-row { display: flex; justify-content: space-between; align-items: center; padding: 8px 0; border-bottom: 1px solid var(--gray-100); font-size: 14px; }
-  .rec-row:last-child { border-bottom: none; }
-  .rec-row.total { font-weight: 700; font-size: 16px; padding-top: 12px; border-top: 2px solid var(--gray-200); border-bottom: none; }
-  .rec-row .lbl { color: var(--gray-600); }
-  .rec-row .val { font-weight: 500; }
-  .rec-row.total .val { color: var(--green); font-size: 20px; }
+  .log-item { display:flex; align-items:center; gap:10px; padding:10px 16px; border-bottom:1px solid var(--gray-100); }
+  .log-item:last-child { border-bottom:none; }
+  .log-dot { width:8px; height:8px; border-radius:50%; background:var(--green); flex-shrink:0; }
+  .log-dot.legacy { background:var(--amber); }
+  .log-info { flex:1; min-width:0; }
+  .log-name { font-size:13px; font-weight:500; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
+  .log-meta { font-size:11px; color:var(--gray-400); margin-top:1px; }
+  .log-price { font-size:13px; font-weight:600; color:var(--green); flex-shrink:0; }
 
-  .settings-row { display: flex; align-items: center; justify-content: space-between; gap: 12px; padding: 12px 0; border-bottom: 1px solid var(--gray-100); }
-  .settings-row:last-child { border-bottom: none; }
-  .settings-lbl { font-size: 14px; font-weight: 500; }
-  .settings-sub { font-size: 12px; color: var(--gray-400); margin-top: 2px; }
-  .settings-row input[type=text], .settings-row input[type=number] { flex: none; width: 130px; }
+  .empty-state { text-align:center; padding:32px 16px; color:var(--gray-400); }
+  .empty-state i { font-size:36px; display:block; margin-bottom:10px; }
 
-  .pill-period { display: inline-flex; align-items: center; gap: 6px; background: var(--blue-lt); color: var(--blue); padding: 4px 12px; border-radius: 20px; font-size: 12px; font-weight: 500; margin-bottom: 12px; }
+  .rec-row { display:flex; justify-content:space-between; align-items:center; padding:8px 0; border-bottom:1px solid var(--gray-100); font-size:14px; }
+  .rec-row:last-child { border-bottom:none; }
+  .rec-row.total { font-weight:700; font-size:16px; padding-top:12px; border-top:2px solid var(--gray-200); border-bottom:none; }
+  .rec-row .lbl { color:var(--gray-600); }
+  .rec-row.total .val { color:var(--green); font-size:20px; }
 
-  .spinner { display: inline-block; width: 16px; height: 16px; border: 2px solid rgba(255,255,255,0.3); border-top-color: #fff; border-radius: 50%; animation: spin 0.6s linear infinite; }
-  @keyframes spin { to { transform: rotate(360deg); } }
+  .settings-row { display:flex; align-items:center; justify-content:space-between; gap:12px; padding:12px 0; border-bottom:1px solid var(--gray-100); }
+  .settings-row:last-child { border-bottom:none; }
+  .settings-lbl { font-size:14px; font-weight:500; }
+  .settings-sub { font-size:12px; color:var(--gray-400); margin-top:2px; }
+  .settings-row input[type=text], .settings-row input[type=number] { flex:none; width:130px; }
 
-  .overlay { position: fixed; inset: 0; background: rgba(0,0,0,0.45); display: flex; align-items: center; justify-content: center; z-index: 100; padding: 16px; }
-  .modal { background: #fff; border-radius: 16px; padding: 24px; width: 100%; max-width: 340px; text-align: center; }
-  .modal h3 { font-size: 17px; font-weight: 600; margin-bottom: 8px; }
-  .modal p { font-size: 13px; color: var(--gray-600); margin-bottom: 16px; }
+  .pill-period { display:inline-flex; align-items:center; gap:6px; background:var(--blue-lt); color:var(--blue); padding:4px 12px; border-radius:20px; font-size:12px; font-weight:500; margin-bottom:12px; }
 
-  .connecting { text-align: center; padding: 40px 16px; }
-  .connecting i { font-size: 40px; color: var(--blue); display: block; margin-bottom: 12px; }
+  .spinner { display:inline-block; width:16px; height:16px; border:2px solid rgba(255,255,255,0.3); border-top-color:#fff; border-radius:50%; animation:spin 0.6s linear infinite; }
+  .spinner-blue { border-color:rgba(45,89,134,0.2); border-top-color:var(--blue); }
+  @keyframes spin { to { transform:rotate(360deg); } }
+
+  .overlay { position:fixed; inset:0; background:rgba(0,0,0,0.45); display:flex; align-items:center; justify-content:center; z-index:100; padding:16px; }
+  .modal { background:#fff; border-radius:16px; padding:24px; width:100%; max-width:340px; text-align:center; }
+  .modal h3 { font-size:17px; font-weight:600; margin-bottom:8px; }
+  .modal p { font-size:13px; color:var(--gray-600); margin-bottom:16px; }
+
+  #scan-success-flash { display:none; position:fixed; inset:0; background:rgba(22,163,74,0.25); z-index:50; pointer-events:none; }
 </style>
 </head>
 <body>
 
+<div id="scan-success-flash"></div>
+
 <!-- PIN GATE -->
 <div class="overlay" id="pin-overlay">
   <div class="modal">
-    <i class="ti ti-lock" style="font-size:36px;color:var(--blue);display:block;margin-bottom:12px" aria-hidden="true"></i>
+    <i class="ti ti-lock" style="font-size:36px;color:var(--blue);display:block;margin-bottom:12px"></i>
     <h3>Vendor access</h3>
     <p>Enter the PIN provided by Hamiltons Theatrical Supply</p>
     <input type="password" id="pin-input" placeholder="Enter PIN" maxlength="6" style="width:100%;margin-bottom:10px;text-align:center;font-size:20px;letter-spacing:6px" onkeydown="if(event.key==='Enter')checkPin()">
@@ -166,30 +175,56 @@
   </div>
 
   <div class="tabs">
-    <button class="tab active" onclick="showPage('scan')" aria-label="Scan"><i class="ti ti-scan"></i><span>Scan</span></button>
-    <button class="tab" onclick="showPage('log')" aria-label="Sales log"><i class="ti ti-list"></i><span>Log</span></button>
-    <button class="tab" onclick="showPage('reconcile')" aria-label="Reconcile"><i class="ti ti-receipt"></i><span>Reconcile</span></button>
-    <button class="tab" onclick="showPage('settings')" aria-label="Settings"><i class="ti ti-settings"></i><span>Settings</span></button>
+    <button class="tab active" onclick="showPage('scan')"><i class="ti ti-scan"></i><span>Scan</span></button>
+    <button class="tab" onclick="showPage('log')"><i class="ti ti-list"></i><span>Log</span></button>
+    <button class="tab" onclick="showPage('reconcile')"><i class="ti ti-receipt"></i><span>Reconcile</span></button>
+    <button class="tab" onclick="showPage('settings')"><i class="ti ti-settings"></i><span>Settings</span></button>
   </div>
 
   <!-- SCAN PAGE -->
   <div class="page active" id="page-scan">
-    <div class="card" id="scan-idle-card">
-      <div class="scan-center">
-        <div class="scan-icon-wrap"><i class="ti ti-barcode" aria-hidden="true"></i></div>
-        <div class="scan-title">Scan a barcode</div>
-        <div class="scan-sub">Type or paste the barcode, or use a Bluetooth scanner — then tap Look up</div>
-        <div class="input-row" style="margin-top:4px">
-          <input type="text" id="barcode-input" placeholder="Barcode string…" autocomplete="off" autocorrect="off" autocapitalize="off" spellcheck="false" onkeydown="if(event.key==='Enter')doLookup()">
-          <button class="btn btn-primary" onclick="doLookup()" id="lookup-btn"><i class="ti ti-search" aria-hidden="true"></i></button>
-        </div>
-        <div id="scan-error" style="display:none"></div>
+
+    <div class="card card-pad" id="scan-input-card">
+      <!-- Mode toggle -->
+      <div class="scan-mode-toggle">
+        <button class="mode-btn active" id="mode-camera" onclick="setMode('camera')">
+          <i class="ti ti-camera"></i> Use camera
+        </button>
+        <button class="mode-btn" id="mode-manual" onclick="setMode('manual')">
+          <i class="ti ti-keyboard"></i> Type barcode
+        </button>
       </div>
+
+      <!-- Camera scanner -->
+      <div id="camera-wrap">
+        <div id="interactive" class="viewport"></div>
+        <div class="scan-overlay">
+          <div class="scan-frame"><span></span><div class="scan-laser"></div></div>
+          <div class="scan-hint">Point at the barcode label</div>
+        </div>
+      </div>
+      <div id="camera-error" style="display:none;margin-top:8px"></div>
+
+      <!-- Manual input -->
+      <div id="manual-wrap" style="display:none">
+        <div class="scan-center" style="padding:16px 0 0">
+          <div class="scan-icon-wrap"><i class="ti ti-barcode"></i></div>
+          <div class="scan-title">Enter barcode</div>
+          <div class="scan-sub">Type or paste the barcode string from the label</div>
+          <div class="input-row">
+            <input type="text" id="barcode-input" placeholder="Barcode string…" autocomplete="off" autocorrect="off" autocapitalize="off" spellcheck="false" onkeydown="if(event.key==='Enter')doLookup()">
+            <button class="btn btn-primary" onclick="doLookup()" id="lookup-btn"><i class="ti ti-search"></i></button>
+          </div>
+        </div>
+      </div>
+
+      <div id="scan-error" style="display:none"></div>
     </div>
 
+    <!-- Result card -->
     <div class="card" id="result-card" style="display:none">
       <div class="result-header">
-        <div class="result-img" id="result-img-el"><i class="ti ti-shirt" aria-hidden="true"></i></div>
+        <div class="result-img" id="result-img-el"><i class="ti ti-shirt"></i></div>
         <div style="flex:1;min-width:0">
           <div class="result-name" id="result-name">—</div>
           <div class="result-meta" id="result-meta"></div>
@@ -201,13 +236,16 @@
           <div class="price-label">Wholesale price owed to Hamiltons</div>
           <div class="price-val" id="result-price">—</div>
         </div>
-        <div id="already-sold-badge" style="display:none"><span class="badge badge-red"><i class="ti ti-alert-circle" style="font-size:12px" aria-hidden="true"></i> Already sold</span></div>
+        <div id="already-sold-badge" style="display:none">
+          <span class="badge badge-red"><i class="ti ti-alert-circle" style="font-size:12px"></i> Already sold</span>
+        </div>
       </div>
       <div class="action-bar">
-        <button class="btn" onclick="clearResult()"><i class="ti ti-x" aria-hidden="true"></i> Cancel</button>
-        <button class="btn btn-success" id="mark-sold-btn" onclick="doMarkSold()"><i class="ti ti-check" aria-hidden="true"></i> Mark as sold</button>
+        <button class="btn" onclick="clearResult()"><i class="ti ti-x"></i> Cancel</button>
+        <button class="btn btn-success" id="mark-sold-btn" onclick="doMarkSold()"><i class="ti ti-check"></i> Mark as sold</button>
       </div>
     </div>
+
   </div>
 
   <!-- LOG PAGE -->
@@ -217,32 +255,28 @@
       <div class="stat"><div class="stat-num blue" id="s-avail">—</div><div class="stat-lbl">Available</div></div>
       <div class="stat"><div class="stat-num" id="s-total">—</div><div class="stat-lbl">Total</div></div>
     </div>
-    <div class="card" id="log-card">
+    <div class="card">
       <div class="section-label" style="padding:14px 16px 0">Recent sales</div>
-      <div id="log-list">
-        <div class="connecting"><i class="ti ti-loader" aria-hidden="true"></i><p>Loading sales…</p></div>
-      </div>
+      <div id="log-list"><div class="empty-state"><i class="ti ti-loader"></i><p>Loading…</p></div></div>
     </div>
   </div>
 
   <!-- RECONCILE PAGE -->
   <div class="page" id="page-reconcile">
-    <div class="pill-period"><i class="ti ti-calendar" aria-hidden="true"></i><span id="rec-period">Loading…</span></div>
+    <div class="pill-period"><i class="ti ti-calendar"></i><span id="rec-period">Loading…</span></div>
     <div class="card card-pad">
       <div class="section-label">Payment summary</div>
-      <div id="rec-body">
-        <div class="connecting" style="padding:20px"><i class="ti ti-loader" aria-hidden="true"></i></div>
-      </div>
+      <div id="rec-body"><div class="empty-state" style="padding:16px"><i class="ti ti-loader"></i></div></div>
     </div>
     <div class="card card-pad">
       <div class="section-label">Export</div>
-      <p style="font-size:13px;color:var(--gray-600);margin-bottom:12px">Download a CSV of this period's sales to send to Hamiltons or paste into the reconciliation spreadsheet.</p>
-      <button class="btn btn-full" onclick="exportCSV()"><i class="ti ti-download" aria-hidden="true"></i> Download sales CSV</button>
+      <p style="font-size:13px;color:var(--gray-600);margin-bottom:12px">Download a CSV of this period's sales to send to Hamiltons.</p>
+      <button class="btn btn-full" onclick="exportCSV()"><i class="ti ti-download"></i> Download sales CSV</button>
     </div>
     <div class="card card-pad">
       <div class="section-label">Close period</div>
-      <p style="font-size:13px;color:var(--gray-600);margin-bottom:12px">Once payment is sent, start a new settlement period. All sales data is kept in the Google Sheet.</p>
-      <button class="btn btn-full" style="border-color:var(--green);color:var(--green)" onclick="doClosePeriod()"><i class="ti ti-circle-check" aria-hidden="true"></i> Mark as paid &amp; start new period</button>
+      <p style="font-size:13px;color:var(--gray-600);margin-bottom:12px">Once payment is sent, start a new settlement period. All data is kept in Google Sheets.</p>
+      <button class="btn btn-full" style="border-color:var(--green);color:var(--green)" onclick="doClosePeriod()"><i class="ti ti-circle-check"></i> Mark as paid &amp; start new period</button>
     </div>
   </div>
 
@@ -250,17 +284,17 @@
   <div class="page" id="page-settings">
     <div class="card card-pad">
       <div class="section-label">Connection</div>
-      <div class="settings-row">
-        <div><div class="settings-lbl">Apps Script URL</div><div class="settings-sub">Paste your deployed web app URL</div></div>
+      <div class="settings-row" style="flex-direction:column;align-items:flex-start;gap:6px">
+        <div><div class="settings-lbl">Apps Script URL</div><div class="settings-sub">Paste your deployed Google Apps Script web app URL</div></div>
+        <input type="text" id="api-url-input" placeholder="https://script.google.com/macros/s/…/exec" style="width:100%" onchange="saveLocal()">
       </div>
-      <input type="text" id="api-url-input" placeholder="https://script.google.com/macros/s/…/exec" style="width:100%;margin-bottom:8px" onchange="saveLocal()">
-      <button class="btn btn-full" onclick="testConnection()"><i class="ti ti-plug" aria-hidden="true"></i> Test connection</button>
+      <button class="btn btn-full" style="margin-top:10px" onclick="testConnection()"><i class="ti ti-plug"></i> Test connection</button>
       <div id="conn-status" style="margin-top:8px;display:none"></div>
     </div>
     <div class="card card-pad">
       <div class="section-label">Event &amp; pricing</div>
       <div class="settings-row">
-        <div><div class="settings-lbl">Current event name</div><div class="settings-sub">Stamped on each sale</div></div>
+        <div><div class="settings-lbl">Current event name</div><div class="settings-sub">Stamped on each sale record</div></div>
         <input type="text" id="event-input" placeholder="e.g. Dance Worlds" onchange="pushSettings()">
       </div>
       <div class="settings-row" style="border-bottom:none">
@@ -271,48 +305,53 @@
     <div class="card card-pad">
       <div class="section-label">Access PIN</div>
       <div class="settings-row" style="border-bottom:none">
-        <div><div class="settings-lbl">Vendor PIN</div><div class="settings-sub">Stored locally on this device</div></div>
+        <div><div class="settings-lbl">Vendor PIN</div><div class="settings-sub">Stored on this device only</div></div>
         <input type="number" id="pin-setting" placeholder="e.g. 1234" style="width:100px" onchange="saveLocal()">
       </div>
     </div>
   </div>
 
-</div><!-- /main-app -->
+</div>
 
 <script>
-const LS = {
-  get: k => { try { return JSON.parse(localStorage.getItem('hts_'+k)); } catch(e) { return null; } },
-  set: (k,v) => localStorage.setItem('hts_'+k, JSON.stringify(v)),
+var API_URL = '';
+var currentItem = null;
+var recentSales = [];
+var scannerRunning = false;
+var lastScanned = '';
+var lastScannedTime = 0;
+var currentMode = 'camera';
+
+// ── Local storage ─────────────────────────────────────────────
+var LS = {
+  get: function(k) { try { return JSON.parse(localStorage.getItem('hts_'+k)); } catch(e) { return null; } },
+  set: function(k,v) { localStorage.setItem('hts_'+k, JSON.stringify(v)); }
 };
 
-let API_URL = '';
-let currentItem = null;
-let recentSales = [];
-
-// ── PIN gate ─────────────────────────────────────────────────
+// ── PIN gate ──────────────────────────────────────────────────
 function checkPin() {
-  const stored = LS.get('pin') || '1234';
-  const entered = document.getElementById('pin-input').value;
-  if (String(entered) === String(stored)) {
+  var stored = String(LS.get('pin') || '1234');
+  var entered = document.getElementById('pin-input').value;
+  if (entered === stored) {
     document.getElementById('pin-overlay').style.display = 'none';
     document.getElementById('main-app').style.display = 'block';
     init();
   } else {
-    const el = document.getElementById('pin-error');
+    var el = document.getElementById('pin-error');
     el.textContent = 'Incorrect PIN. Try again.';
     el.style.display = 'block';
     document.getElementById('pin-input').value = '';
   }
 }
-document.getElementById('pin-input').addEventListener('keydown', e => { if(e.key==='Enter') checkPin(); });
+document.getElementById('pin-input').addEventListener('keydown', function(e) { if(e.key==='Enter') checkPin(); });
 
-// ── Init ─────────────────────────────────────────────────────
+// ── Init ──────────────────────────────────────────────────────
 function init() {
   API_URL = LS.get('apiUrl') || '';
-  const pin = LS.get('pin');
   document.getElementById('api-url-input').value = API_URL;
-  document.getElementById('pin-setting').value = pin || '1234';
+  document.getElementById('pin-setting').value = LS.get('pin') || '1234';
   if (API_URL) fetchSettings();
+  setMode('camera');
 }
 
 function saveLocal() {
@@ -321,33 +360,225 @@ function saveLocal() {
   LS.set('pin', document.getElementById('pin-setting').value);
 }
 
+// ── Camera scanner ────────────────────────────────────────────
+function setMode(mode) {
+  currentMode = mode;
+  document.getElementById('mode-camera').classList.toggle('active', mode==='camera');
+  document.getElementById('mode-manual').classList.toggle('active', mode==='manual');
+  document.getElementById('camera-wrap').classList.toggle('active', mode==='camera');
+  document.getElementById('manual-wrap').style.display = mode==='manual' ? 'block' : 'none';
+
+  if (mode === 'camera') {
+    startScanner();
+  } else {
+    stopScanner();
+    setTimeout(function(){ document.getElementById('barcode-input').focus(); }, 100);
+  }
+}
+
+function startScanner() {
+  if (scannerRunning) return;
+  var camWrap = document.getElementById('camera-wrap');
+  var camErr  = document.getElementById('camera-error');
+  camErr.style.display = 'none';
+
+  Quagga.init({
+    inputStream: {
+      name: 'Live',
+      type: 'LiveStream',
+      target: document.getElementById('interactive'),
+      constraints: {
+        facingMode: 'environment',
+        width: { ideal: 1280 },
+        height: { ideal: 720 }
+      }
+    },
+    decoder: {
+      readers: [
+        'code_128_reader',
+        'ean_reader',
+        'ean_8_reader',
+        'code_39_reader',
+        'code_39_vin_reader',
+        'codabar_reader',
+        'upc_reader',
+        'upc_e_reader',
+        'i2of5_reader',
+        'code_93_reader'
+      ],
+      multiple: false
+    },
+    locate: true,
+    numOfWorkers: 2,
+    frequency: 10
+  }, function(err) {
+    if (err) {
+      camErr.innerHTML = '<div class="alert alert-error"><i class="ti ti-alert-circle"></i> Camera not available: ' + err.message + '. Switch to "Type barcode" mode.</div>';
+      camErr.style.display = 'block';
+      camWrap.classList.remove('active');
+      setMode('manual');
+      return;
+    }
+    Quagga.start();
+    scannerRunning = true;
+  });
+
+  Quagga.onDetected(function(result) {
+    var code = result.codeResult.code;
+    if (!code) return;
+    var now = Date.now();
+    if (code === lastScanned && now - lastScannedTime < 3000) return;
+    lastScanned = code;
+    lastScannedTime = now;
+    onBarcodeDetected(code);
+  });
+}
+
+function stopScanner() {
+  if (!scannerRunning) return;
+  Quagga.stop();
+  scannerRunning = false;
+  lastScanned = '';
+}
+
+function onBarcodeDetected(code) {
+  // Flash the screen green briefly
+  var flash = document.getElementById('scan-success-flash');
+  flash.style.display = 'block';
+  setTimeout(function(){ flash.style.display = 'none'; }, 150);
+  // Trigger lookup
+  document.getElementById('barcode-input') && (document.getElementById('barcode-input').value = code);
+  performLookup(code);
+}
+
+// ── Lookup ────────────────────────────────────────────────────
+function doLookup() {
+  var barcode = document.getElementById('barcode-input').value.trim();
+  if (!barcode) return;
+  performLookup(barcode);
+}
+
+async function performLookup(barcode) {
+  var errEl = document.getElementById('scan-error');
+  errEl.style.display = 'none';
+  var btn = document.getElementById('lookup-btn');
+  if (btn) { btn.innerHTML = '<div class="spinner"></div>'; btn.disabled = true; }
+
+  try {
+    var d = await apiGet({ action:'lookup', barcode: barcode });
+    if (d.error)  { showScanError(d.error); return; }
+    if (!d.found) { showScanError('Barcode not found in inventory. Check the label or ask Hamiltons to add it.'); return; }
+    renderResult(d);
+  } catch(e) {
+    showScanError('Connection error. Check Settings → Apps Script URL.');
+  } finally {
+    if (btn) { btn.innerHTML = '<i class="ti ti-search"></i>'; btn.disabled = false; }
+  }
+}
+
+function showScanError(msg) {
+  var el = document.getElementById('scan-error');
+  el.innerHTML = '<div class="alert alert-error"><i class="ti ti-alert-circle"></i> ' + msg + '</div>';
+  el.style.display = 'block';
+}
+
+function renderResult(item) {
+  currentItem = item;
+  var isLegacy = String(item.type).toLowerCase() === 'legacy';
+  var isSold   = String(item.status).toLowerCase() === 'sold';
+
+  document.getElementById('result-name').textContent    = isLegacy ? 'Legacy clearance item' : item.name;
+  document.getElementById('result-barcode').textContent = item.barcode;
+  document.getElementById('result-price').textContent   = '$' + parseFloat(item.price).toFixed(2) + ' CAD';
+
+  var imgEl = document.getElementById('result-img-el');
+  if (item.image && String(item.image).startsWith('http')) {
+    imgEl.innerHTML = '<img src="' + item.image + '" alt="" onerror="this.parentNode.innerHTML=\'<i class=ti ti-shirt></i>\'">';
+  } else {
+    imgEl.innerHTML = '<i class="ti ti-shirt"></i>';
+  }
+
+  var meta = [
+    '<span class="badge badge-gray">' + item.size + '</span>',
+    '<span class="badge badge-gray">' + item.color + '</span>',
+    isLegacy
+      ? '<span class="badge badge-amber"><i class="ti ti-history" style="font-size:11px"></i> Legacy — flat rate</span>'
+      : '<span class="badge badge-green"><i class="ti ti-check" style="font-size:11px"></i> Matched</span>'
+  ];
+  document.getElementById('result-meta').innerHTML = meta.join('');
+  document.getElementById('already-sold-badge').style.display = isSold ? 'block' : 'none';
+  document.getElementById('mark-sold-btn').disabled = isSold;
+  document.getElementById('result-card').style.display = 'block';
+
+  // Pause scanner while result is shown
+  if (scannerRunning) stopScanner();
+}
+
+function clearResult() {
+  document.getElementById('result-card').style.display = 'none';
+  document.getElementById('scan-error').style.display = 'none';
+  if (document.getElementById('barcode-input')) document.getElementById('barcode-input').value = '';
+  currentItem = null;
+  // Resume scanner if in camera mode
+  if (currentMode === 'camera') startScanner();
+}
+
+async function doMarkSold() {
+  if (!currentItem) return;
+  var btn = document.getElementById('mark-sold-btn');
+  btn.innerHTML = '<div class="spinner"></div> Saving…';
+  btn.disabled = true;
+  var eventName = document.getElementById('event-input').value.trim();
+  try {
+    var d = await apiPost({ action:'markSold', barcode: currentItem.barcode, event: eventName });
+    if (!d.success) {
+      alert(d.error || 'Could not mark as sold.');
+      btn.innerHTML = '<i class="ti ti-check"></i> Mark as sold';
+      btn.disabled = false;
+      return;
+    }
+    var card = document.getElementById('result-card');
+    card.style.transition = 'opacity 0.4s';
+    card.style.opacity = '0';
+    setTimeout(function(){ card.style.opacity=''; card.style.transition=''; clearResult(); }, 400);
+  } catch(e) {
+    alert('Connection error. Try again.');
+    btn.innerHTML = '<i class="ti ti-check"></i> Mark as sold';
+    btn.disabled = false;
+  }
+}
+
+// ── Pages ─────────────────────────────────────────────────────
+function showPage(name) {
+  document.querySelectorAll('.page').forEach(function(p){ p.classList.remove('active'); });
+  document.querySelectorAll('.tab').forEach(function(t){ t.classList.remove('active'); });
+  document.getElementById('page-'+name).classList.add('active');
+  ['scan','log','reconcile','settings'].forEach(function(n,i){
+    if(n===name) document.querySelectorAll('.tab')[i].classList.add('active');
+  });
+  if (name !== 'scan' && scannerRunning) stopScanner();
+  if (name === 'scan' && currentMode === 'camera' && !currentItem) startScanner();
+  if (name === 'log') loadLog();
+  if (name === 'reconcile') loadReconcile();
+}
+
 // ── API helpers ───────────────────────────────────────────────
 async function apiGet(params) {
   if (!API_URL) return { error: 'No API URL configured. Go to Settings.' };
-  const url = API_URL + '?' + new URLSearchParams(params);
-  const res = await fetch(url);
+  var url = API_URL + '?' + new URLSearchParams(params);
+  var res = await fetch(url);
   return res.json();
 }
 
 async function apiPost(body) {
   if (!API_URL) return { error: 'No API URL configured. Go to Settings.' };
-  const res = await fetch(API_URL, { method:'POST', body: JSON.stringify(body) });
+  var res = await fetch(API_URL, { method:'POST', body: JSON.stringify(body) });
   return res.json();
 }
 
-// ── Pages ─────────────────────────────────────────────────────
-function showPage(name) {
-  document.querySelectorAll('.page').forEach(p => p.classList.remove('active'));
-  document.querySelectorAll('.tab').forEach(t => t.classList.remove('active'));
-  document.getElementById('page-'+name).classList.add('active');
-  document.querySelectorAll('.tab')[['scan','log','reconcile','settings'].indexOf(name)].classList.add('active');
-  if (name==='log') loadLog();
-  if (name==='reconcile') loadReconcile();
-}
-
-// ── Settings ─────────────────────────────────────────────────
+// ── Settings ──────────────────────────────────────────────────
 async function fetchSettings() {
-  const d = await apiGet({ action:'settings' });
+  var d = await apiGet({ action:'settings' });
   if (d.error) return;
   document.getElementById('event-input').value = d.eventName || '';
   document.getElementById('rate-input').value  = d.legacyRate || 25;
@@ -355,149 +586,62 @@ async function fetchSettings() {
 }
 
 async function pushSettings() {
-  const eventName  = document.getElementById('event-input').value.trim();
-  const legacyRate = parseFloat(document.getElementById('rate-input').value) || 25;
+  var eventName  = document.getElementById('event-input').value.trim();
+  var legacyRate = parseFloat(document.getElementById('rate-input').value) || 25;
   saveLocal();
   document.getElementById('header-event').textContent = eventName || 'No event set';
-  await apiPost({ action:'saveSettings', eventName, legacyRate });
+  await apiPost({ action:'saveSettings', eventName: eventName, legacyRate: legacyRate });
 }
 
 async function testConnection() {
   saveLocal();
   API_URL = document.getElementById('api-url-input').value.trim();
-  const el = document.getElementById('conn-status');
+  var el = document.getElementById('conn-status');
   el.style.display = 'block';
-  el.innerHTML = '<div class="alert" style="background:var(--blue-lt);color:var(--blue)"><div class="spinner" style="border-top-color:var(--blue)"></div> Testing…</div>';
+  el.innerHTML = '<div class="alert" style="background:var(--blue-lt);color:var(--blue)"><div class="spinner spinner-blue"></div> Testing…</div>';
   try {
-    const d = await apiGet({ action:'stats' });
+    var d = await apiGet({ action:'stats' });
     if (d.error) throw new Error(d.error);
-    el.innerHTML = '<div class="alert alert-success"><i class="ti ti-circle-check"></i> Connected — '+d.total+' items in inventory</div>';
+    el.innerHTML = '<div class="alert alert-success"><i class="ti ti-circle-check"></i> Connected — ' + d.total + ' items in inventory</div>';
     fetchSettings();
   } catch(e) {
-    el.innerHTML = '<div class="alert alert-error"><i class="ti ti-alert-circle"></i> '+e.message+'</div>';
+    el.innerHTML = '<div class="alert alert-error"><i class="ti ti-alert-circle"></i> ' + e.message + '</div>';
   }
 }
 
-// ── Scan ─────────────────────────────────────────────────────
-async function doLookup() {
-  const barcode = document.getElementById('barcode-input').value.trim();
-  if (!barcode) return;
-  const btn = document.getElementById('lookup-btn');
-  btn.innerHTML = '<div class="spinner"></div>';
-  btn.disabled = true;
-  const errEl = document.getElementById('scan-error');
-  errEl.style.display = 'none';
-
-  try {
-    const d = await apiGet({ action:'lookup', barcode });
-    if (d.error)  { showScanError(d.error); return; }
-    if (!d.found) { showScanError('Barcode not found in inventory. Check the label or ask Hamiltons to add it.'); return; }
-    renderResult(d);
-  } catch(e) {
-    showScanError('Connection error. Check Settings → Apps Script URL.');
-  } finally {
-    btn.innerHTML = '<i class="ti ti-search" aria-hidden="true"></i>';
-    btn.disabled = false;
-  }
-}
-
-function showScanError(msg) {
-  const el = document.getElementById('scan-error');
-  el.innerHTML = '<div class="alert alert-error"><i class="ti ti-alert-circle" aria-hidden="true"></i> '+msg+'</div>';
-  el.style.display = 'block';
-}
-
-function renderResult(item) {
-  currentItem = item;
-  const isLegacy = item.type === 'legacy';
-  const isSold   = item.status === 'sold';
-
-  document.getElementById('result-name').textContent    = isLegacy ? 'Legacy clearance item' : item.name;
-  document.getElementById('result-barcode').textContent = item.barcode;
-  document.getElementById('result-price').textContent   = '$' + parseFloat(item.price).toFixed(2) + ' CAD';
-
-  const imgEl = document.getElementById('result-img-el');
-  if (item.image && item.image.startsWith('http')) {
-    imgEl.innerHTML = '<img src="'+item.image+'" alt="'+item.name+'" onerror="this.parentNode.innerHTML=\'<i class=ti ti-shirt aria-hidden=true></i>\'">';
-  } else {
-    imgEl.innerHTML = '<i class="ti ti-shirt" aria-hidden="true"></i>';
-  }
-
-  const meta = [
-    '<span class="badge badge-gray">'+item.size+'</span>',
-    '<span class="badge badge-gray">'+item.color+'</span>',
-    isLegacy ? '<span class="badge badge-amber"><i class="ti ti-history" style="font-size:11px" aria-hidden="true"></i> Legacy — flat rate</span>'
-             : '<span class="badge badge-green"><i class="ti ti-check" style="font-size:11px" aria-hidden="true"></i> Matched</span>',
-  ];
-  document.getElementById('result-meta').innerHTML = meta.join('');
-
-  const soldBadge = document.getElementById('already-sold-badge');
-  const markBtn   = document.getElementById('mark-sold-btn');
-  soldBadge.style.display = isSold ? 'block' : 'none';
-  markBtn.disabled         = isSold;
-
-  document.getElementById('result-card').style.display = 'block';
-}
-
-function clearResult() {
-  document.getElementById('result-card').style.display = 'none';
-  document.getElementById('barcode-input').value = '';
-  document.getElementById('scan-error').style.display = 'none';
-  currentItem = null;
-}
-
-async function doMarkSold() {
-  if (!currentItem) return;
-  const btn = document.getElementById('mark-sold-btn');
-  btn.innerHTML = '<div class="spinner"></div> Saving…';
-  btn.disabled = true;
-  const eventName = document.getElementById('event-input').value.trim();
-  try {
-    const d = await apiPost({ action:'markSold', barcode: currentItem.barcode, event: eventName });
-    if (!d.success) { alert(d.error || 'Could not mark as sold.'); btn.innerHTML='<i class="ti ti-check"></i> Mark as sold'; btn.disabled=false; return; }
-    const card = document.getElementById('result-card');
-    card.style.transition = 'opacity 0.4s';
-    card.style.opacity = '0';
-    setTimeout(() => { card.style.opacity=''; card.style.transition=''; clearResult(); }, 400);
-  } catch(e) {
-    alert('Connection error. Try again.');
-    btn.innerHTML = '<i class="ti ti-check" aria-hidden="true"></i> Mark as sold';
-    btn.disabled = false;
-  }
-}
-
-// ── Log ──────────────────────────────────────────────────────
+// ── Log ───────────────────────────────────────────────────────
 async function loadLog() {
-  const [stats, sales] = await Promise.all([
+  var results = await Promise.all([
     apiGet({ action:'stats' }),
-    apiGet({ action:'recentSales', n:30 }),
+    apiGet({ action:'recentSales', n:30 })
   ]);
+  var stats = results[0], sales = results[1];
   if (!stats.error) {
     document.getElementById('s-sold').textContent  = stats.sold;
     document.getElementById('s-avail').textContent = stats.available;
     document.getElementById('s-total').textContent = stats.total;
   }
-  const list = document.getElementById('log-list');
+  var list = document.getElementById('log-list');
   if (!sales.length || sales.error) {
-    list.innerHTML = '<div class="empty-state"><i class="ti ti-receipt-off" aria-hidden="true"></i><p>No sales recorded yet</p></div>';
+    list.innerHTML = '<div class="empty-state"><i class="ti ti-receipt-off"></i><p>No sales recorded yet</p></div>';
     return;
   }
   recentSales = sales;
-  list.innerHTML = sales.map(s =>
-    '<div class="log-item">' +
-    '<div class="log-dot'+(s.type==='legacy'?' legacy':'')+'"></div>' +
-    '<div class="log-info">' +
-    '<div class="log-name">'+(s.type==='legacy'?'Legacy clearance item':s.name)+'</div>' +
-    '<div class="log-meta">'+s.size+' · '+s.color+(s.event?' · '+s.event:'')+' · '+s.soldAt+'</div>' +
-    '</div>' +
-    '<div class="log-price">$'+parseFloat(s.price).toFixed(2)+'</div>' +
-    '</div>'
-  ).join('');
+  list.innerHTML = sales.map(function(s){
+    return '<div class="log-item">' +
+      '<div class="log-dot' + (String(s.type).toLowerCase()==='legacy'?' legacy':'') + '"></div>' +
+      '<div class="log-info">' +
+        '<div class="log-name">' + (String(s.type).toLowerCase()==='legacy' ? 'Legacy clearance item' : s.name) + '</div>' +
+        '<div class="log-meta">' + s.size + ' · ' + s.color + (s.event?' · '+s.event:'') + ' · ' + s.soldAt + '</div>' +
+      '</div>' +
+      '<div class="log-price">$' + parseFloat(s.price).toFixed(2) + '</div>' +
+    '</div>';
+  }).join('');
 }
 
 // ── Reconcile ─────────────────────────────────────────────────
 async function loadReconcile() {
-  const d = await apiGet({ action:'reconcile' });
+  var d = await apiGet({ action:'reconcile' });
   document.getElementById('rec-period').textContent = d.period || '—';
   if (d.error) { document.getElementById('rec-body').innerHTML = '<p style="color:var(--red);font-size:13px">'+d.error+'</p>'; return; }
   document.getElementById('rec-body').innerHTML =
@@ -508,16 +652,18 @@ async function loadReconcile() {
 
 async function doClosePeriod() {
   if (!confirm('Mark this period as paid and start a new one?')) return;
-  const d = await apiPost({ action:'closePeriod' });
-  if (d.success) { alert('New period started: '+d.newPeriod); loadReconcile(); }
+  var d = await apiPost({ action:'closePeriod' });
+  if (d.success) { alert('New period started: ' + d.newPeriod); loadReconcile(); }
 }
 
 function exportCSV() {
-  if (!recentSales.length) { alert('Load the Sales Log first.'); showPage('log'); return; }
-  const rows = [['Date','Event','Barcode','Product name','Size','Color','Type','Price (CAD)']];
-  recentSales.forEach(s => rows.push([s.soldAt, s.event, s.barcode, s.name, s.size, s.color, s.type, parseFloat(s.price).toFixed(2)]));
-  const csv = rows.map(r => r.map(v => '"'+String(v||'').replace(/"/g,'""')+'"').join(',')).join('\n');
-  const a = document.createElement('a');
+  if (!recentSales.length) { alert('Load the Sales Log tab first.'); showPage('log'); return; }
+  var rows = [['Date','Event','Barcode','Product name','Size','Color','Type','Price (CAD)']];
+  recentSales.forEach(function(s){
+    rows.push([s.soldAt, s.event, s.barcode, s.name, s.size, s.color, s.type, parseFloat(s.price).toFixed(2)]);
+  });
+  var csv = rows.map(function(r){ return r.map(function(v){ return '"'+String(v||'').replace(/"/g,'""')+'"'; }).join(','); }).join('\n');
+  var a = document.createElement('a');
   a.href = 'data:text/csv;charset=utf-8,' + encodeURIComponent(csv);
   a.download = 'hamiltons_sales_' + new Date().toISOString().slice(0,7) + '.csv';
   a.click();
