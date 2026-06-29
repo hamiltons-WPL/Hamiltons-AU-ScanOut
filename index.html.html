@@ -5,7 +5,7 @@
 <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1">
 <title>Hamiltons Clearance Scan-Out</title>
 <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@tabler/icons-webfont@3.19.0/dist/tabler-icons.min.css">
-<script src="https://cdn.jsdelivr.net/npm/quagga@0.12.1/dist/quagga.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/@zxing/library@0.20.0/umd/index.min.js"></script>
 <style>
   *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
   :root {
@@ -36,32 +36,32 @@
   .card-pad { padding:16px; }
   .section-label { font-size:11px; font-weight:600; color:var(--gray-400); text-transform:uppercase; letter-spacing:0.05em; margin-bottom:10px; }
 
-  /* ── Scanner ── */
   .scan-mode-toggle { display:flex; gap:8px; margin-bottom:14px; }
   .mode-btn { flex:1; height:40px; border-radius:var(--radius); border:1px solid var(--gray-200); background:#fff; color:var(--gray-600); font-size:13px; font-weight:500; cursor:pointer; display:flex; align-items:center; justify-content:center; gap:6px; transition:all 0.15s; }
   .mode-btn.active { background:var(--blue); border-color:var(--blue); color:#fff; }
 
   #camera-wrap { position:relative; width:100%; border-radius:10px; overflow:hidden; background:#000; display:none; }
   #camera-wrap.active { display:block; }
-  #interactive { width:100%; }
-  #interactive video { width:100%; display:block; }
-  #interactive canvas { display:none; }
+  #scanner-video { width:100%; display:block; max-height:320px; object-fit:cover; }
 
   .scan-overlay { position:absolute; inset:0; display:flex; flex-direction:column; align-items:center; justify-content:center; pointer-events:none; }
-  .scan-frame { width:72%; max-width:260px; aspect-ratio:3/1.2; border:2px solid rgba(255,255,255,0.8); border-radius:8px; position:relative; }
+  .scan-frame { width:65%; max-width:240px; aspect-ratio:1/1; border:2px solid rgba(255,255,255,0.8); border-radius:12px; position:relative; }
   .scan-frame::before, .scan-frame::after,
   .scan-frame span::before, .scan-frame span::after {
-    content:''; position:absolute; width:20px; height:20px; border-color:#fff; border-style:solid;
+    content:''; position:absolute; width:22px; height:22px; border-color:#fff; border-style:solid;
   }
   .scan-frame::before { top:-2px; left:-2px; border-width:3px 0 0 3px; border-radius:4px 0 0 0; }
   .scan-frame::after  { top:-2px; right:-2px; border-width:3px 3px 0 0; border-radius:0 4px 0 0; }
   .scan-frame span::before { bottom:-2px; left:-2px; border-width:0 0 3px 3px; border-radius:0 0 0 4px; }
   .scan-frame span::after  { bottom:-2px; right:-2px; border-width:0 3px 3px 0; border-radius:0 0 4px 0; }
-  .scan-laser { position:absolute; left:4px; right:4px; height:2px; background:rgba(255,80,80,0.85); top:50%; transform:translateY(-50%); border-radius:2px; animation:laser 1.8s ease-in-out infinite; }
-  @keyframes laser { 0%,100%{top:15%} 50%{top:85%} }
-  .scan-hint { color:rgba(255,255,255,0.85); font-size:12px; margin-top:14px; text-align:center; }
+  .scan-laser { position:absolute; left:4px; right:4px; height:2px; background:rgba(255,80,80,0.85); border-radius:2px; animation:laser 1.8s ease-in-out infinite; }
+  @keyframes laser { 0%,100%{top:10%} 50%{top:88%} }
+  .scan-hint { color:rgba(255,255,255,0.9); font-size:12px; margin-top:12px; text-align:center; background:rgba(0,0,0,0.35); padding:4px 12px; border-radius:20px; }
 
-  .scan-center { text-align:center; padding:24px 16px; }
+  #camera-select-wrap { margin-bottom:10px; display:none; }
+  #camera-select { width:100%; height:38px; border:1px solid var(--gray-200); border-radius:var(--radius); padding:0 10px; font-size:13px; background:#fff; color:var(--gray-800); }
+
+  .scan-center { text-align:center; padding:16px 0 0; }
   .scan-icon-wrap { width:64px; height:64px; background:var(--blue-lt); border-radius:50%; display:flex; align-items:center; justify-content:center; margin:0 auto 14px; }
   .scan-icon-wrap i { font-size:28px; color:var(--blue); }
   .scan-title { font-size:16px; font-weight:600; margin-bottom:6px; }
@@ -87,7 +87,6 @@
   .result-name { font-size:15px; font-weight:600; margin-bottom:5px; line-height:1.3; }
   .result-meta { display:flex; flex-wrap:wrap; gap:5px; }
   .badge { display:inline-flex; align-items:center; gap:3px; padding:2px 8px; border-radius:20px; font-size:11px; font-weight:500; }
-  .badge-blue { background:var(--blue-lt); color:var(--blue); }
   .badge-green { background:var(--green-lt); color:var(--green); }
   .badge-amber { background:var(--amber-lt); color:var(--amber); }
   .badge-gray { background:var(--gray-100); color:var(--gray-600); border:1px solid var(--gray-200); }
@@ -102,6 +101,7 @@
   .alert { padding:10px 14px; border-radius:var(--radius); font-size:13px; margin-top:10px; display:flex; align-items:center; gap:8px; }
   .alert-error { background:var(--red-lt); color:var(--red); border:1px solid #fca5a5; }
   .alert-success { background:var(--green-lt); color:var(--green); border:1px solid #86efac; }
+  .alert-info { background:var(--blue-lt); color:var(--blue); border:1px solid #93c5fd; }
 
   .stat-grid { display:grid; grid-template-columns:repeat(3,1fr); gap:8px; margin-bottom:12px; }
   .stat { background:#fff; border:1px solid var(--gray-200); border-radius:10px; padding:12px; text-align:center; }
@@ -158,7 +158,7 @@
     <i class="ti ti-lock" style="font-size:36px;color:var(--blue);display:block;margin-bottom:12px"></i>
     <h3>Vendor access</h3>
     <p>Enter the PIN provided by Hamiltons Theatrical Supply</p>
-    <input type="password" id="pin-input" placeholder="Enter PIN" maxlength="6" style="width:100%;margin-bottom:10px;text-align:center;font-size:20px;letter-spacing:6px" onkeydown="if(event.key==='Enter')checkPin()">
+    <input type="password" id="pin-input" placeholder="Enter PIN" maxlength="6" style="width:100%;margin-bottom:10px;text-align:center;font-size:20px;letter-spacing:6px">
     <div id="pin-error" style="display:none;color:var(--red);font-size:13px;margin-bottom:10px"></div>
     <button class="btn btn-primary btn-full" onclick="checkPin()">Unlock</button>
   </div>
@@ -183,9 +183,8 @@
 
   <!-- SCAN PAGE -->
   <div class="page active" id="page-scan">
-
     <div class="card card-pad" id="scan-input-card">
-      <!-- Mode toggle -->
+
       <div class="scan-mode-toggle">
         <button class="mode-btn active" id="mode-camera" onclick="setMode('camera')">
           <i class="ti ti-camera"></i> Use camera
@@ -195,19 +194,24 @@
         </button>
       </div>
 
-      <!-- Camera scanner -->
+      <!-- Camera picker (shown when multiple cameras available) -->
+      <div id="camera-select-wrap">
+        <select id="camera-select" onchange="switchCamera(this.value)"></select>
+      </div>
+
+      <!-- Camera view -->
       <div id="camera-wrap">
-        <div id="interactive" class="viewport"></div>
+        <video id="scanner-video" autoplay muted playsinline></video>
         <div class="scan-overlay">
           <div class="scan-frame"><span></span><div class="scan-laser"></div></div>
-          <div class="scan-hint">Point at the barcode label</div>
+          <div class="scan-hint">Point at barcode or QR code</div>
         </div>
       </div>
       <div id="camera-error" style="display:none;margin-top:8px"></div>
 
       <!-- Manual input -->
       <div id="manual-wrap" style="display:none">
-        <div class="scan-center" style="padding:16px 0 0">
+        <div class="scan-center">
           <div class="scan-icon-wrap"><i class="ti ti-barcode"></i></div>
           <div class="scan-title">Enter barcode</div>
           <div class="scan-sub">Type or paste the barcode string from the label</div>
@@ -245,7 +249,6 @@
         <button class="btn btn-success" id="mark-sold-btn" onclick="doMarkSold()"><i class="ti ti-check"></i> Mark as sold</button>
       </div>
     </div>
-
   </div>
 
   <!-- LOG PAGE -->
@@ -317,18 +320,19 @@
 var API_URL = '';
 var currentItem = null;
 var recentSales = [];
-var scannerRunning = false;
+var currentMode = 'camera';
+var codeReader = null;
+var scannerActive = false;
 var lastScanned = '';
 var lastScannedTime = 0;
-var currentMode = 'camera';
+var selectedDeviceId = null;
 
-// ── Local storage ─────────────────────────────────────────────
 var LS = {
   get: function(k) { try { return JSON.parse(localStorage.getItem('hts_'+k)); } catch(e) { return null; } },
   set: function(k,v) { localStorage.setItem('hts_'+k, JSON.stringify(v)); }
 };
 
-// ── PIN gate ──────────────────────────────────────────────────
+// ── PIN ───────────────────────────────────────────────────────
 function checkPin() {
   var stored = String(LS.get('pin') || '1234');
   var entered = document.getElementById('pin-input').value;
@@ -345,110 +349,120 @@ function checkPin() {
 }
 document.getElementById('pin-input').addEventListener('keydown', function(e) { if(e.key==='Enter') checkPin(); });
 
-// ── Init ──────────────────────────────────────────────────────
 function init() {
   API_URL = LS.get('apiUrl') || '';
   document.getElementById('api-url-input').value = API_URL;
   document.getElementById('pin-setting').value = LS.get('pin') || '1234';
   if (API_URL) fetchSettings();
+  // Init ZXing reader — supports all barcodes + QR
+  codeReader = new ZXing.BrowserMultiFormatReader();
   setMode('camera');
 }
 
 function saveLocal() {
   LS.set('apiUrl', document.getElementById('api-url-input').value.trim());
-  API_URL = LS.get('apiUrl');
+  API_URL = LS.get('apiUrl') || '';
   LS.set('pin', document.getElementById('pin-setting').value);
 }
 
-// ── Camera scanner ────────────────────────────────────────────
+// ── Camera scanner (ZXing) ────────────────────────────────────
 function setMode(mode) {
   currentMode = mode;
-  document.getElementById('mode-camera').classList.toggle('active', mode==='camera');
-  document.getElementById('mode-manual').classList.toggle('active', mode==='manual');
-  document.getElementById('camera-wrap').classList.toggle('active', mode==='camera');
-  document.getElementById('manual-wrap').style.display = mode==='manual' ? 'block' : 'none';
+  document.getElementById('mode-camera').classList.toggle('active', mode === 'camera');
+  document.getElementById('mode-manual').classList.toggle('active', mode === 'manual');
+  document.getElementById('camera-wrap').classList.toggle('active', mode === 'camera');
+  document.getElementById('manual-wrap').style.display = mode === 'manual' ? 'block' : 'none';
 
   if (mode === 'camera') {
     startScanner();
   } else {
     stopScanner();
-    setTimeout(function(){ document.getElementById('barcode-input').focus(); }, 100);
+    setTimeout(function() {
+      var inp = document.getElementById('barcode-input');
+      if (inp) inp.focus();
+    }, 100);
   }
 }
 
 function startScanner() {
-  if (scannerRunning) return;
-  var camWrap = document.getElementById('camera-wrap');
-  var camErr  = document.getElementById('camera-error');
+  if (scannerActive || !codeReader) return;
+  var camErr = document.getElementById('camera-error');
   camErr.style.display = 'none';
 
-  Quagga.init({
-    inputStream: {
-      name: 'Live',
-      type: 'LiveStream',
-      target: document.getElementById('interactive'),
-      constraints: {
-        facingMode: 'environment',
-        width: { ideal: 1280 },
-        height: { ideal: 720 }
-      }
-    },
-    decoder: {
-      readers: [
-        'code_128_reader',
-        'ean_reader',
-        'ean_8_reader',
-        'code_39_reader',
-        'code_39_vin_reader',
-        'codabar_reader',
-        'upc_reader',
-        'upc_e_reader',
-        'i2of5_reader',
-        'code_93_reader'
-      ],
-      multiple: false
-    },
-    locate: true,
-    numOfWorkers: 2,
-    frequency: 10
-  }, function(err) {
-    if (err) {
-      camErr.innerHTML = '<div class="alert alert-error"><i class="ti ti-alert-circle"></i> Camera not available: ' + err.message + '. Switch to "Type barcode" mode.</div>';
-      camErr.style.display = 'block';
-      camWrap.classList.remove('active');
-      setMode('manual');
+  // List available cameras first
+  ZXing.BrowserMultiFormatReader.listVideoInputDevices().then(function(devices) {
+    if (!devices || devices.length === 0) {
+      showCameraError('No camera found on this device.');
       return;
     }
-    Quagga.start();
-    scannerRunning = true;
-  });
 
-  Quagga.onDetected(function(result) {
-    var code = result.codeResult.code;
-    if (!code) return;
-    var now = Date.now();
-    if (code === lastScanned && now - lastScannedTime < 3000) return;
-    lastScanned = code;
-    lastScannedTime = now;
-    onBarcodeDetected(code);
+    // Show camera selector if multiple cameras
+    var selectWrap = document.getElementById('camera-select-wrap');
+    var select = document.getElementById('camera-select');
+    if (devices.length > 1) {
+      select.innerHTML = devices.map(function(d, i) {
+        return '<option value="' + d.deviceId + '">' + (d.label || 'Camera ' + (i+1)) + '</option>';
+      }).join('');
+      // Prefer back camera on mobile
+      var backCam = devices.find(function(d) {
+        return d.label && d.label.toLowerCase().match(/back|rear|environment/);
+      });
+      if (backCam) select.value = backCam.deviceId;
+      selectWrap.style.display = 'block';
+      selectedDeviceId = select.value;
+    } else {
+      selectWrap.style.display = 'none';
+      selectedDeviceId = devices[0].deviceId;
+    }
+
+    beginDecoding(selectedDeviceId);
+
+  }).catch(function(err) {
+    showCameraError('Camera access denied. Please allow camera permission, or use "Type barcode" mode. (' + err.message + ')');
   });
+}
+
+function beginDecoding(deviceId) {
+  var video = document.getElementById('scanner-video');
+  scannerActive = true;
+
+  codeReader.decodeFromVideoDevice(deviceId, video, function(result, err) {
+    if (result) {
+      var code = result.getText();
+      var now = Date.now();
+      if (code === lastScanned && now - lastScannedTime < 3000) return;
+      lastScanned = code;
+      lastScannedTime = now;
+      // Flash green
+      var flash = document.getElementById('scan-success-flash');
+      flash.style.display = 'block';
+      setTimeout(function() { flash.style.display = 'none'; }, 150);
+      performLookup(code);
+    }
+    // Ignore NotFoundError — it fires continuously when no barcode in frame
+  });
+}
+
+function switchCamera(deviceId) {
+  selectedDeviceId = deviceId;
+  stopScanner();
+  scannerActive = false;
+  setTimeout(function() { beginDecoding(deviceId); scannerActive = true; }, 300);
 }
 
 function stopScanner() {
-  if (!scannerRunning) return;
-  Quagga.stop();
-  scannerRunning = false;
+  if (!codeReader) return;
+  try { codeReader.reset(); } catch(e) {}
+  scannerActive = false;
   lastScanned = '';
 }
 
-function onBarcodeDetected(code) {
-  // Flash the screen green briefly
-  var flash = document.getElementById('scan-success-flash');
-  flash.style.display = 'block';
-  setTimeout(function(){ flash.style.display = 'none'; }, 150);
-  // Trigger lookup
-  document.getElementById('barcode-input') && (document.getElementById('barcode-input').value = code);
-  performLookup(code);
+function showCameraError(msg) {
+  var el = document.getElementById('camera-error');
+  el.innerHTML = '<div class="alert alert-error"><i class="ti ti-alert-circle"></i> ' + msg + '</div>';
+  el.style.display = 'block';
+  document.getElementById('camera-wrap').classList.remove('active');
+  setMode('manual');
 }
 
 // ── Lookup ────────────────────────────────────────────────────
@@ -459,16 +473,16 @@ function doLookup() {
 }
 
 async function performLookup(barcode) {
-  var errEl = document.getElementById('scan-error');
-  errEl.style.display = 'none';
+  document.getElementById('scan-error').style.display = 'none';
   var btn = document.getElementById('lookup-btn');
   if (btn) { btn.innerHTML = '<div class="spinner"></div>'; btn.disabled = true; }
 
   try {
-    var d = await apiGet({ action:'lookup', barcode: barcode });
+    var d = await apiGet({ action: 'lookup', barcode: barcode });
     if (d.error)  { showScanError(d.error); return; }
-    if (!d.found) { showScanError('Barcode not found in inventory. Check the label or ask Hamiltons to add it.'); return; }
+    if (!d.found) { showScanError('Barcode not found: ' + barcode + '. Check the label or ask Hamiltons to add it.'); return; }
     renderResult(d);
+    if (scannerActive) stopScanner();
   } catch(e) {
     showScanError('Connection error. Check Settings → Apps Script URL.');
   } finally {
@@ -493,34 +507,35 @@ function renderResult(item) {
 
   var imgEl = document.getElementById('result-img-el');
   if (item.image && String(item.image).startsWith('http')) {
-    imgEl.innerHTML = '<img src="' + item.image + '" alt="" onerror="this.parentNode.innerHTML=\'<i class=ti ti-shirt></i>\'">';
+    imgEl.innerHTML = '<img src="' + item.image + '" alt="" onerror="this.parentNode.innerHTML=\'<i class=ti\\ ti-shirt></i>\'">';
   } else {
     imgEl.innerHTML = '<i class="ti ti-shirt"></i>';
   }
 
-  var meta = [
+  document.getElementById('result-meta').innerHTML = [
     '<span class="badge badge-gray">' + item.size + '</span>',
     '<span class="badge badge-gray">' + item.color + '</span>',
     isLegacy
       ? '<span class="badge badge-amber"><i class="ti ti-history" style="font-size:11px"></i> Legacy — flat rate</span>'
       : '<span class="badge badge-green"><i class="ti ti-check" style="font-size:11px"></i> Matched</span>'
-  ];
-  document.getElementById('result-meta').innerHTML = meta.join('');
+  ].join('');
+
   document.getElementById('already-sold-badge').style.display = isSold ? 'block' : 'none';
   document.getElementById('mark-sold-btn').disabled = isSold;
   document.getElementById('result-card').style.display = 'block';
-
-  // Pause scanner while result is shown
-  if (scannerRunning) stopScanner();
 }
 
 function clearResult() {
   document.getElementById('result-card').style.display = 'none';
   document.getElementById('scan-error').style.display = 'none';
-  if (document.getElementById('barcode-input')) document.getElementById('barcode-input').value = '';
+  var inp = document.getElementById('barcode-input');
+  if (inp) inp.value = '';
   currentItem = null;
-  // Resume scanner if in camera mode
-  if (currentMode === 'camera') startScanner();
+  if (currentMode === 'camera' && !scannerActive) {
+    codeReader = new ZXing.BrowserMultiFormatReader();
+    beginDecoding(selectedDeviceId);
+    scannerActive = true;
+  }
 }
 
 async function doMarkSold() {
@@ -528,9 +543,8 @@ async function doMarkSold() {
   var btn = document.getElementById('mark-sold-btn');
   btn.innerHTML = '<div class="spinner"></div> Saving…';
   btn.disabled = true;
-  var eventName = document.getElementById('event-input').value.trim();
   try {
-    var d = await apiPost({ action:'markSold', barcode: currentItem.barcode, event: eventName });
+    var d = await apiPost({ action: 'markSold', barcode: currentItem.barcode, event: document.getElementById('event-input').value.trim() });
     if (!d.success) {
       alert(d.error || 'Could not mark as sold.');
       btn.innerHTML = '<i class="ti ti-check"></i> Mark as sold';
@@ -540,7 +554,7 @@ async function doMarkSold() {
     var card = document.getElementById('result-card');
     card.style.transition = 'opacity 0.4s';
     card.style.opacity = '0';
-    setTimeout(function(){ card.style.opacity=''; card.style.transition=''; clearResult(); }, 400);
+    setTimeout(function() { card.style.opacity = ''; card.style.transition = ''; clearResult(); }, 400);
   } catch(e) {
     alert('Connection error. Try again.');
     btn.innerHTML = '<i class="ti ti-check"></i> Mark as sold';
@@ -550,35 +564,37 @@ async function doMarkSold() {
 
 // ── Pages ─────────────────────────────────────────────────────
 function showPage(name) {
-  document.querySelectorAll('.page').forEach(function(p){ p.classList.remove('active'); });
-  document.querySelectorAll('.tab').forEach(function(t){ t.classList.remove('active'); });
-  document.getElementById('page-'+name).classList.add('active');
-  ['scan','log','reconcile','settings'].forEach(function(n,i){
-    if(n===name) document.querySelectorAll('.tab')[i].classList.add('active');
+  document.querySelectorAll('.page').forEach(function(p) { p.classList.remove('active'); });
+  document.querySelectorAll('.tab').forEach(function(t) { t.classList.remove('active'); });
+  document.getElementById('page-' + name).classList.add('active');
+  ['scan','log','reconcile','settings'].forEach(function(n, i) {
+    if (n === name) document.querySelectorAll('.tab')[i].classList.add('active');
   });
-  if (name !== 'scan' && scannerRunning) stopScanner();
-  if (name === 'scan' && currentMode === 'camera' && !currentItem) startScanner();
+  if (name !== 'scan') stopScanner();
+  if (name === 'scan' && currentMode === 'camera' && !currentItem) {
+    codeReader = new ZXing.BrowserMultiFormatReader();
+    startScanner();
+  }
   if (name === 'log') loadLog();
   if (name === 'reconcile') loadReconcile();
 }
 
-// ── API helpers ───────────────────────────────────────────────
+// ── API ───────────────────────────────────────────────────────
 async function apiGet(params) {
   if (!API_URL) return { error: 'No API URL configured. Go to Settings.' };
-  var url = API_URL + '?' + new URLSearchParams(params);
-  var res = await fetch(url);
+  var res = await fetch(API_URL + '?' + new URLSearchParams(params));
   return res.json();
 }
 
 async function apiPost(body) {
   if (!API_URL) return { error: 'No API URL configured. Go to Settings.' };
-  var res = await fetch(API_URL, { method:'POST', body: JSON.stringify(body) });
+  var res = await fetch(API_URL, { method: 'POST', body: JSON.stringify(body) });
   return res.json();
 }
 
 // ── Settings ──────────────────────────────────────────────────
 async function fetchSettings() {
-  var d = await apiGet({ action:'settings' });
+  var d = await apiGet({ action: 'settings' });
   if (d.error) return;
   document.getElementById('event-input').value = d.eventName || '';
   document.getElementById('rate-input').value  = d.legacyRate || 25;
@@ -590,7 +606,7 @@ async function pushSettings() {
   var legacyRate = parseFloat(document.getElementById('rate-input').value) || 25;
   saveLocal();
   document.getElementById('header-event').textContent = eventName || 'No event set';
-  await apiPost({ action:'saveSettings', eventName: eventName, legacyRate: legacyRate });
+  await apiPost({ action: 'saveSettings', eventName: eventName, legacyRate: legacyRate });
 }
 
 async function testConnection() {
@@ -598,9 +614,9 @@ async function testConnection() {
   API_URL = document.getElementById('api-url-input').value.trim();
   var el = document.getElementById('conn-status');
   el.style.display = 'block';
-  el.innerHTML = '<div class="alert" style="background:var(--blue-lt);color:var(--blue)"><div class="spinner spinner-blue"></div> Testing…</div>';
+  el.innerHTML = '<div class="alert alert-info"><div class="spinner spinner-blue"></div> Testing…</div>';
   try {
-    var d = await apiGet({ action:'stats' });
+    var d = await apiGet({ action: 'stats' });
     if (d.error) throw new Error(d.error);
     el.innerHTML = '<div class="alert alert-success"><i class="ti ti-circle-check"></i> Connected — ' + d.total + ' items in inventory</div>';
     fetchSettings();
@@ -611,10 +627,7 @@ async function testConnection() {
 
 // ── Log ───────────────────────────────────────────────────────
 async function loadLog() {
-  var results = await Promise.all([
-    apiGet({ action:'stats' }),
-    apiGet({ action:'recentSales', n:30 })
-  ]);
+  var results = await Promise.all([apiGet({ action: 'stats' }), apiGet({ action: 'recentSales', n: 30 })]);
   var stats = results[0], sales = results[1];
   if (!stats.error) {
     document.getElementById('s-sold').textContent  = stats.sold;
@@ -627,12 +640,13 @@ async function loadLog() {
     return;
   }
   recentSales = sales;
-  list.innerHTML = sales.map(function(s){
+  list.innerHTML = sales.map(function(s) {
+    var isLeg = String(s.type).toLowerCase() === 'legacy';
     return '<div class="log-item">' +
-      '<div class="log-dot' + (String(s.type).toLowerCase()==='legacy'?' legacy':'') + '"></div>' +
+      '<div class="log-dot' + (isLeg ? ' legacy' : '') + '"></div>' +
       '<div class="log-info">' +
-        '<div class="log-name">' + (String(s.type).toLowerCase()==='legacy' ? 'Legacy clearance item' : s.name) + '</div>' +
-        '<div class="log-meta">' + s.size + ' · ' + s.color + (s.event?' · '+s.event:'') + ' · ' + s.soldAt + '</div>' +
+        '<div class="log-name">' + (isLeg ? 'Legacy clearance item' : s.name) + '</div>' +
+        '<div class="log-meta">' + s.size + ' · ' + s.color + (s.event ? ' · ' + s.event : '') + ' · ' + s.soldAt + '</div>' +
       '</div>' +
       '<div class="log-price">$' + parseFloat(s.price).toFixed(2) + '</div>' +
     '</div>';
@@ -641,28 +655,28 @@ async function loadLog() {
 
 // ── Reconcile ─────────────────────────────────────────────────
 async function loadReconcile() {
-  var d = await apiGet({ action:'reconcile' });
+  var d = await apiGet({ action: 'reconcile' });
   document.getElementById('rec-period').textContent = d.period || '—';
-  if (d.error) { document.getElementById('rec-body').innerHTML = '<p style="color:var(--red);font-size:13px">'+d.error+'</p>'; return; }
+  if (d.error) { document.getElementById('rec-body').innerHTML = '<p style="color:var(--red);font-size:13px">' + d.error + '</p>'; return; }
   document.getElementById('rec-body').innerHTML =
-    '<div class="rec-row"><span class="lbl">Matched items sold</span><span class="val">'+d.matchedCount+' items — $'+parseFloat(d.matchedTotal||0).toFixed(2)+'</span></div>' +
-    '<div class="rec-row"><span class="lbl">Legacy items sold</span><span class="val">'+d.legacyCount+' items — $'+parseFloat(d.legacyTotal||0).toFixed(2)+'</span></div>' +
-    '<div class="rec-row total"><span class="lbl">Total owed to Hamiltons</span><span class="val">$'+parseFloat(d.grandTotal||0).toFixed(2)+' CAD</span></div>';
+    '<div class="rec-row"><span class="lbl">Matched items sold</span><span class="val">' + d.matchedCount + ' items — $' + parseFloat(d.matchedTotal||0).toFixed(2) + '</span></div>' +
+    '<div class="rec-row"><span class="lbl">Legacy items sold</span><span class="val">' + d.legacyCount + ' items — $' + parseFloat(d.legacyTotal||0).toFixed(2) + '</span></div>' +
+    '<div class="rec-row total"><span class="lbl">Total owed to Hamiltons</span><span class="val">$' + parseFloat(d.grandTotal||0).toFixed(2) + ' CAD</span></div>';
 }
 
 async function doClosePeriod() {
   if (!confirm('Mark this period as paid and start a new one?')) return;
-  var d = await apiPost({ action:'closePeriod' });
+  var d = await apiPost({ action: 'closePeriod' });
   if (d.success) { alert('New period started: ' + d.newPeriod); loadReconcile(); }
 }
 
 function exportCSV() {
   if (!recentSales.length) { alert('Load the Sales Log tab first.'); showPage('log'); return; }
   var rows = [['Date','Event','Barcode','Product name','Size','Color','Type','Price (CAD)']];
-  recentSales.forEach(function(s){
+  recentSales.forEach(function(s) {
     rows.push([s.soldAt, s.event, s.barcode, s.name, s.size, s.color, s.type, parseFloat(s.price).toFixed(2)]);
   });
-  var csv = rows.map(function(r){ return r.map(function(v){ return '"'+String(v||'').replace(/"/g,'""')+'"'; }).join(','); }).join('\n');
+  var csv = rows.map(function(r) { return r.map(function(v) { return '"' + String(v||'').replace(/"/g,'""') + '"'; }).join(','); }).join('\n');
   var a = document.createElement('a');
   a.href = 'data:text/csv;charset=utf-8,' + encodeURIComponent(csv);
   a.download = 'hamiltons_sales_' + new Date().toISOString().slice(0,7) + '.csv';
