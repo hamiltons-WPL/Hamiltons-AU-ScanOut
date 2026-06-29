@@ -5,7 +5,7 @@
 <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1">
 <title>Hamiltons Clearance Scan-Out</title>
 <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@tabler/icons-webfont@3.19.0/dist/tabler-icons.min.css">
-<script src="https://cdn.jsdelivr.net/npm/@zxing/library@0.20.0/umd/index.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/html5-qrcode@2.3.8/html5-qrcode.min.js"></script>
 <style>
   *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
   :root {
@@ -40,28 +40,19 @@
   .mode-btn { flex:1; height:40px; border-radius:var(--radius); border:1px solid var(--gray-200); background:#fff; color:var(--gray-600); font-size:13px; font-weight:500; cursor:pointer; display:flex; align-items:center; justify-content:center; gap:6px; transition:all 0.15s; }
   .mode-btn.active { background:var(--blue); border-color:var(--blue); color:#fff; }
 
-  #camera-wrap { position:relative; width:100%; border-radius:10px; overflow:hidden; background:#000; display:none; }
-  #camera-wrap.active { display:block; }
-  #scanner-video { width:100%; display:block; max-height:320px; object-fit:cover; }
+  /* html5-qrcode overrides */
+  #qr-reader { border:none !important; border-radius:10px; overflow:hidden; }
+  #qr-reader video { border-radius:10px; }
+  #qr-reader img { display:none !important; }
+  #qr-reader__scan_region { border-radius:10px; }
+  #qr-reader__dashboard { padding:8px 0 0 !important; }
+  #qr-reader__dashboard_section_swaplink { color:var(--blue) !important; font-size:13px !important; }
+  #qr-reader__status_span { font-size:12px !important; color:var(--gray-600) !important; }
+  #qr-reader__camera_selection { width:100%; height:38px; border:1px solid var(--gray-200); border-radius:var(--radius); padding:0 10px; font-size:13px; background:#fff; color:var(--gray-800); margin-bottom:8px; }
+  #qr-reader__camera_permission_button, #qr-reader__filescan_input { display:none !important; }
 
-  .scan-overlay { position:absolute; inset:0; display:flex; flex-direction:column; align-items:center; justify-content:center; pointer-events:none; }
-  .scan-frame { width:65%; max-width:240px; aspect-ratio:1/1; border:2px solid rgba(255,255,255,0.8); border-radius:12px; position:relative; }
-  .scan-frame::before, .scan-frame::after,
-  .scan-frame span::before, .scan-frame span::after {
-    content:''; position:absolute; width:22px; height:22px; border-color:#fff; border-style:solid;
-  }
-  .scan-frame::before { top:-2px; left:-2px; border-width:3px 0 0 3px; border-radius:4px 0 0 0; }
-  .scan-frame::after  { top:-2px; right:-2px; border-width:3px 3px 0 0; border-radius:0 4px 0 0; }
-  .scan-frame span::before { bottom:-2px; left:-2px; border-width:0 0 3px 3px; border-radius:0 0 0 4px; }
-  .scan-frame span::after  { bottom:-2px; right:-2px; border-width:0 3px 3px 0; border-radius:0 0 4px 0; }
-  .scan-laser { position:absolute; left:4px; right:4px; height:2px; background:rgba(255,80,80,0.85); border-radius:2px; animation:laser 1.8s ease-in-out infinite; }
-  @keyframes laser { 0%,100%{top:10%} 50%{top:88%} }
-  .scan-hint { color:rgba(255,255,255,0.9); font-size:12px; margin-top:12px; text-align:center; background:rgba(0,0,0,0.35); padding:4px 12px; border-radius:20px; }
-
-  #camera-select-wrap { margin-bottom:10px; display:none; }
-  #camera-select { width:100%; height:38px; border:1px solid var(--gray-200); border-radius:var(--radius); padding:0 10px; font-size:13px; background:#fff; color:var(--gray-800); }
-
-  .scan-center { text-align:center; padding:16px 0 0; }
+  .manual-wrap { display:none; }
+  .scan-center { text-align:center; padding:8px 0 0; }
   .scan-icon-wrap { width:64px; height:64px; background:var(--blue-lt); border-radius:50%; display:flex; align-items:center; justify-content:center; margin:0 auto 14px; }
   .scan-icon-wrap i { font-size:28px; color:var(--blue); }
   .scan-title { font-size:16px; font-weight:600; margin-bottom:6px; }
@@ -194,23 +185,12 @@
         </button>
       </div>
 
-      <!-- Camera picker (shown when multiple cameras available) -->
-      <div id="camera-select-wrap">
-        <select id="camera-select" onchange="switchCamera(this.value)"></select>
-      </div>
-
-      <!-- Camera view -->
-      <div id="camera-wrap">
-        <video id="scanner-video" autoplay muted playsinline></video>
-        <div class="scan-overlay">
-          <div class="scan-frame"><span></span><div class="scan-laser"></div></div>
-          <div class="scan-hint">Point at barcode or QR code</div>
-        </div>
-      </div>
+      <!-- html5-qrcode renders inside here -->
+      <div id="qr-reader" style="width:100%"></div>
       <div id="camera-error" style="display:none;margin-top:8px"></div>
 
       <!-- Manual input -->
-      <div id="manual-wrap" style="display:none">
+      <div class="manual-wrap" id="manual-wrap">
         <div class="scan-center">
           <div class="scan-icon-wrap"><i class="ti ti-barcode"></i></div>
           <div class="scan-title">Enter barcode</div>
@@ -321,11 +301,10 @@ var API_URL = '';
 var currentItem = null;
 var recentSales = [];
 var currentMode = 'camera';
-var codeReader = null;
-var scannerActive = false;
+var html5QrCode = null;
+var scannerRunning = false;
 var lastScanned = '';
 var lastScannedTime = 0;
-var selectedDeviceId = null;
 
 var LS = {
   get: function(k) { try { return JSON.parse(localStorage.getItem('hts_'+k)); } catch(e) { return null; } },
@@ -354,8 +333,7 @@ function init() {
   document.getElementById('api-url-input').value = API_URL;
   document.getElementById('pin-setting').value = LS.get('pin') || '1234';
   if (API_URL) fetchSettings();
-  // Init ZXing reader — supports all barcodes + QR
-  codeReader = new ZXing.BrowserMultiFormatReader();
+  html5QrCode = new Html5Qrcode('qr-reader');
   setMode('camera');
 }
 
@@ -365,12 +343,12 @@ function saveLocal() {
   LS.set('pin', document.getElementById('pin-setting').value);
 }
 
-// ── Camera scanner (ZXing) ────────────────────────────────────
+// ── Scanner ───────────────────────────────────────────────────
 function setMode(mode) {
   currentMode = mode;
   document.getElementById('mode-camera').classList.toggle('active', mode === 'camera');
   document.getElementById('mode-manual').classList.toggle('active', mode === 'manual');
-  document.getElementById('camera-wrap').classList.toggle('active', mode === 'camera');
+  document.getElementById('qr-reader').style.display = mode === 'camera' ? 'block' : 'none';
   document.getElementById('manual-wrap').style.display = mode === 'manual' ? 'block' : 'none';
 
   if (mode === 'camera') {
@@ -385,83 +363,73 @@ function setMode(mode) {
 }
 
 function startScanner() {
-  if (scannerActive || !codeReader) return;
+  if (scannerRunning || !html5QrCode) return;
   var camErr = document.getElementById('camera-error');
   camErr.style.display = 'none';
 
-  // List available cameras first
-  ZXing.BrowserMultiFormatReader.listVideoInputDevices().then(function(devices) {
-    if (!devices || devices.length === 0) {
-      showCameraError('No camera found on this device.');
-      return;
-    }
+  var config = {
+    fps: 10,
+    qrbox: { width: 280, height: 200 },
+    aspectRatio: 1.5,
+    supportedScanTypes: [
+      Html5QrcodeScanType.SCAN_TYPE_CAMERA
+    ],
+    formatsToSupport: [
+      Html5QrcodeSupportedFormats.QR_CODE,
+      Html5QrcodeSupportedFormats.CODE_128,
+      Html5QrcodeSupportedFormats.CODE_39,
+      Html5QrcodeSupportedFormats.EAN_13,
+      Html5QrcodeSupportedFormats.EAN_8,
+      Html5QrcodeSupportedFormats.UPC_A,
+      Html5QrcodeSupportedFormats.UPC_E,
+      Html5QrcodeSupportedFormats.CODABAR,
+      Html5QrcodeSupportedFormats.ITF,
+      Html5QrcodeSupportedFormats.CODE_93,
+      Html5QrcodeSupportedFormats.DATA_MATRIX,
+      Html5QrcodeSupportedFormats.AZTEC
+    ]
+  };
 
-    // Show camera selector if multiple cameras
-    var selectWrap = document.getElementById('camera-select-wrap');
-    var select = document.getElementById('camera-select');
-    if (devices.length > 1) {
-      select.innerHTML = devices.map(function(d, i) {
-        return '<option value="' + d.deviceId + '">' + (d.label || 'Camera ' + (i+1)) + '</option>';
-      }).join('');
-      // Prefer back camera on mobile
-      var backCam = devices.find(function(d) {
-        return d.label && d.label.toLowerCase().match(/back|rear|environment/);
-      });
-      if (backCam) select.value = backCam.deviceId;
-      selectWrap.style.display = 'block';
-      selectedDeviceId = select.value;
-    } else {
-      selectWrap.style.display = 'none';
-      selectedDeviceId = devices[0].deviceId;
-    }
-
-    beginDecoding(selectedDeviceId);
-
-  }).catch(function(err) {
-    showCameraError('Camera access denied. Please allow camera permission, or use "Type barcode" mode. (' + err.message + ')');
-  });
-}
-
-function beginDecoding(deviceId) {
-  var video = document.getElementById('scanner-video');
-  scannerActive = true;
-
-  codeReader.decodeFromVideoDevice(deviceId, video, function(result, err) {
-    if (result) {
-      var code = result.getText();
+  html5QrCode.start(
+    { facingMode: 'environment' },
+    config,
+    function(decodedText) {
       var now = Date.now();
-      if (code === lastScanned && now - lastScannedTime < 3000) return;
-      lastScanned = code;
+      if (decodedText === lastScanned && now - lastScannedTime < 3000) return;
+      lastScanned = decodedText;
       lastScannedTime = now;
-      // Flash green
       var flash = document.getElementById('scan-success-flash');
       flash.style.display = 'block';
       setTimeout(function() { flash.style.display = 'none'; }, 150);
-      performLookup(code);
+      performLookup(decodedText);
+    },
+    function() { /* scanning frame - ignore errors */ }
+  ).then(function() {
+    scannerRunning = true;
+  }).catch(function(err) {
+    var msg = String(err);
+    if (msg.indexOf('Permission') > -1 || msg.indexOf('NotAllowed') > -1) {
+      showCameraError('Camera permission denied. Please allow camera access in your browser settings, or use "Type barcode" mode.');
+    } else {
+      showCameraError('Camera not available: ' + msg + '. Please use "Type barcode" mode.');
     }
-    // Ignore NotFoundError — it fires continuously when no barcode in frame
   });
 }
 
-function switchCamera(deviceId) {
-  selectedDeviceId = deviceId;
-  stopScanner();
-  scannerActive = false;
-  setTimeout(function() { beginDecoding(deviceId); scannerActive = true; }, 300);
-}
-
 function stopScanner() {
-  if (!codeReader) return;
-  try { codeReader.reset(); } catch(e) {}
-  scannerActive = false;
-  lastScanned = '';
+  if (!html5QrCode || !scannerRunning) return;
+  html5QrCode.stop().then(function() {
+    scannerRunning = false;
+    lastScanned = '';
+  }).catch(function() {
+    scannerRunning = false;
+  });
 }
 
 function showCameraError(msg) {
   var el = document.getElementById('camera-error');
   el.innerHTML = '<div class="alert alert-error"><i class="ti ti-alert-circle"></i> ' + msg + '</div>';
   el.style.display = 'block';
-  document.getElementById('camera-wrap').classList.remove('active');
   setMode('manual');
 }
 
@@ -480,9 +448,9 @@ async function performLookup(barcode) {
   try {
     var d = await apiGet({ action: 'lookup', barcode: barcode });
     if (d.error)  { showScanError(d.error); return; }
-    if (!d.found) { showScanError('Barcode not found: ' + barcode + '. Check the label or ask Hamiltons to add it.'); return; }
+    if (!d.found) { showScanError('Barcode not found: ' + barcode); return; }
     renderResult(d);
-    if (scannerActive) stopScanner();
+    if (scannerRunning) stopScanner();
   } catch(e) {
     showScanError('Connection error. Check Settings → Apps Script URL.');
   } finally {
@@ -531,10 +499,12 @@ function clearResult() {
   var inp = document.getElementById('barcode-input');
   if (inp) inp.value = '';
   currentItem = null;
-  if (currentMode === 'camera' && !scannerActive) {
-    codeReader = new ZXing.BrowserMultiFormatReader();
-    beginDecoding(selectedDeviceId);
-    scannerActive = true;
+  if (currentMode === 'camera') {
+    // Restart scanner after result cleared
+    html5QrCode = new Html5Qrcode('qr-reader');
+    scannerRunning = false;
+    lastScanned = '';
+    startScanner();
   }
 }
 
@@ -571,8 +541,8 @@ function showPage(name) {
     if (n === name) document.querySelectorAll('.tab')[i].classList.add('active');
   });
   if (name !== 'scan') stopScanner();
-  if (name === 'scan' && currentMode === 'camera' && !currentItem) {
-    codeReader = new ZXing.BrowserMultiFormatReader();
+  if (name === 'scan' && currentMode === 'camera' && !currentItem && !scannerRunning) {
+    html5QrCode = new Html5Qrcode('qr-reader');
     startScanner();
   }
   if (name === 'log') loadLog();
